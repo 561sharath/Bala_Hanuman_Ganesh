@@ -1,0 +1,147 @@
+{
+  "header": {
+    "orgTitle": "Sri Bala Hanuman Vinayaka Seva Samithi",
+    "tagline": "Vinayaka Chanda Collection Management",
+    "menu": {
+      "createEntry": "Create Entry",
+      "updateEntry": "Update Entry",
+      "downloadSheet": "Download Sheet"
+    },
+    "language": {
+      "en": "English",
+      "te": "తెలుగు"
+    }
+  },
+  "home": {
+    "title": "Sri Bala Hanuman Vinayaka Seva Samithi",
+    "cards": {
+      "create": {
+        "title": "Create Entry",
+        "desc": "Add a new collection record securely to the central Samithi ledger with donor details.",
+        "action": "Get Started"
+      },
+      "update": {
+        "title": "Update Entry",
+        "desc": "Search, filter, and modify existing collection records by date, donor name, or collector.",
+        "action": "Search & Edit"
+      },
+      "download": {
+        "title": "Download Sheet",
+        "desc": "Export all Vinayaka Chanda collection records to Excel, sorted by amount paid.",
+        "action": "Export Excel"
+      }
+    }
+  },
+  "createEntry": {
+    "title": "Create Collection Entry",
+    "subtitle": "Record a new donation entry for Vinayaka Chanda",
+    "fields": {
+      "name": "Donor Name",
+      "namePlaceholder": "Enter donor name...",
+      "nameLang": "Name Language",
+      "amount": "Total Amount (₹)",
+      "amountPlaceholder": "Enter amount (0 - 100,000)",
+      "amountPaid": "Amount Paid (₹)",
+      "amountPaidPlaceholder": "Enter amount paid",
+      "pendingAmount": "Pending Amount (₹)",
+      "paymentVia": "Payment Via",
+      "status": "Status",
+      "paidTo": "Paid To (Collector)",
+      "date": "Date"
+    },
+    "buttons": {
+      "save": "Save Entry",
+      "saving": "Saving Entry...",
+      "addCollector": "Add Name"
+    },
+    "placeholders": {
+      "selectPayment": "Select Payment Mode",
+      "selectStatus": "Select Status",
+      "selectCollector": "Select Collector"
+    }
+  },
+  "updateEntry": {
+    "title": "Update & Search Records",
+    "subtitle": "Search records by date, donor name, or collector and update details",
+    "tabs": {
+      "date": "Search by Date",
+      "name": "Search by Name",
+      "collector": "Search by Paid To"
+    },
+    "searchPlaceholders": {
+      "date": "Select Date",
+      "name": "Search by donor name (English or Telugu)...",
+      "collector": "Select Collector"
+    },
+    "table": {
+      "name": "Donor Name",
+      "amount": "Amount",
+      "amountPaid": "Paid",
+      "pendingAmount": "Pending",
+      "paymentVia": "Payment Via",
+      "status": "Status",
+      "paidTo": "Paid To",
+      "date": "Date",
+      "action": "Action",
+      "edit": "Edit"
+    },
+    "emptyState": "No collection records found.",
+    "currentYearNotice": "Date picker allows dates from current year only."
+  },
+  "downloadSheet": {
+    "title": "Download Collection Sheet",
+    "subtitle": "Export complete collection records sorted by highest amount paid first",
+    "infoTitle": "Excel Export Specifications",
+    "infoItems": [
+      "Sorted by Amount Paid in descending order",
+      "Includes all donor details, payment modes, and collector info",
+      "Full support for Telugu character encoding",
+      "Compatible with Excel, Google Sheets, Mobile & Desktop"
+    ],
+    "button": "Download Excel Sheet",
+    "downloading": "Generating & Downloading..."
+  },
+  "modals": {
+    "addCollector": {
+      "title": "Add New Collector",
+      "label": "Collector Name",
+      "placeholder": "Enter collector name...",
+      "save": "Save Collector",
+      "saving": "Saving...",
+      "cancel": "Cancel"
+    },
+    "editRecord": {
+      "title": "Edit Collection Record",
+      "save": "Save Changes",
+      "saving": "Saving Changes...",
+      "cancel": "Cancel"
+    }
+  },
+  "options": {
+    "upi": "UPI",
+    "cash": "Cash",
+    "paid": "Paid",
+    "pending": "Pending",
+    "balance": "Balance"
+  },
+  "toasts": {
+    "recordSaved": "Record saved successfully",
+    "recordUpdated": "Record updated successfully",
+    "collectorAdded": "Collector added successfully",
+    "excelDownloaded": "Excel sheet downloaded successfully",
+    "errorOccurred": "An error occurred. Please try again."
+  },
+  "validation": {
+    "nameRequired": "Name is required",
+    "nameMax": "Name cannot exceed 70 characters",
+    "amountRequired": "Amount is required and must be between ₹0 and ₹100,000",
+    "amountPaidRequired": "Amount Paid is required and must be between ₹0 and ₹100,000",
+    "amountPaidMax": "Amount Paid cannot be greater than Total Amount",
+    "paymentViaRequired": "Payment Via is required",
+    "statusRequired": "Status is required",
+    "paidToRequired": "Paid To collector is required",
+    "collectorNameRequired": "Collector name is required",
+    "collectorExists": "Collector name already exists",
+    "invalidYearDate": "Selected date must be in the current year"
+  }
+}
