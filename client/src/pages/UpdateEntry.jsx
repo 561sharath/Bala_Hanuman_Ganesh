@@ -1,41 +1,49 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Calendar, UserCheck, Edit3, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Calendar, UserCheck, Edit3, Trash2, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   searchCollectionsByName,
   fetchCollectionsByDate,
   fetchCollectionsByCollector,
   fetchCollections,
   fetchCollectors,
+  deleteCollectionRecord,
 } from '../services/api';
 import { EditCollectionModal } from '../components/EditCollectionModal';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { Pagination } from '../components/Pagination';
 
 export const UpdateEntry = () => {
   const { t } = useLanguage();
+  const { isAdmin } = useAuth();
+  const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('name');
-
   const [searchName, setSearchName] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedCollector, setSelectedCollector] = useState('');
   const [collectors, setCollectors] = useState([]);
 
   const [records, setRecords] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
 
+  // Modals state
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [deletingRecord, setDeletingRecord] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const minDate = `${currentYear}-01-01`;
   const maxDate = `${currentYear}-12-31`;
 
-  const debounceTimerRef = useRef(null);
-
   useEffect(() => {
     loadCollectors();
-    loadAllRecords();
   }, []);
 
   const loadCollectors = async () => {
@@ -47,84 +55,55 @@ export const UpdateEntry = () => {
     }
   };
 
-  const loadAllRecords = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetchCollections();
-      if (res.success) setRecords(res.data);
-    } catch (err) {
-      setError(t('toasts.errorOccurred'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadRecords = useCallback(
+    async (currentPage = 1) => {
+      setLoading(true);
+      setError('');
+      try {
+        let res;
+        if (activeTab === 'name') {
+          res = await searchCollectionsByName(searchName.trim(), currentPage, 20);
+        } else if (activeTab === 'date' && selectedDate) {
+          res = await fetchCollectionsByDate(selectedDate, currentPage, 20);
+        } else if (activeTab === 'collector' && selectedCollector) {
+          res = await fetchCollectionsByCollector(selectedCollector, currentPage, 20);
+        } else {
+          res = await fetchCollections(currentPage, 20);
+        }
 
-  const handleNameInputChange = (e) => {
-    const val = e.target.value;
-    setSearchName(val);
+        if (res && res.success) {
+          setRecords(res.data);
+          setPagination(res.pagination);
+        }
+      } catch (err) {
+        setError(t('toasts.errorOccurred'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [activeTab, searchName, selectedDate, selectedCollector]
+  );
 
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      executeNameSearch(val);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      loadRecords(1);
     }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchName, selectedDate, selectedCollector, activeTab, loadRecords]);
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+    loadRecords(newPage);
   };
 
-  const executeNameSearch = async (query) => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await searchCollectionsByName(query);
-      if (res.success) setRecords(res.data);
-    } catch (err) {
-      setError(t('toasts.errorOccurred'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDateSearch = async (e) => {
-    e.preventDefault();
-    if (!selectedDate) return;
-
-    const chosenYear = new Date(selectedDate).getFullYear();
-    if (chosenYear !== currentYear) {
-      setError(t('validation.invalidYearDate'));
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetchCollectionsByDate(selectedDate);
-      if (res.success) setRecords(res.data);
-    } catch (err) {
-      setError(err.response?.data?.message || t('toasts.errorOccurred'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCollectorSearch = async (collectorId) => {
-    setSelectedCollector(collectorId);
-    if (!collectorId) {
-      loadAllRecords();
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetchCollectionsByCollector(collectorId);
-      if (res.success) setRecords(res.data);
-    } catch (err) {
-      setError(t('toasts.errorOccurred'));
-    } finally {
-      setLoading(false);
-    }
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSearchName('');
+    setSelectedDate('');
+    setSelectedCollector('');
+    setPage(1);
   };
 
   const openEditModal = (record) => {
@@ -136,6 +115,30 @@ export const UpdateEntry = () => {
     setRecords((prev) =>
       prev.map((item) => (item._id === updatedRecord._id ? updatedRecord : item))
     );
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingRecord) return;
+    setDeleteLoading(true);
+    try {
+      const res = await deleteCollectionRecord(deletingRecord._id);
+      if (res.success) {
+        showToast(t('toasts.recordDeleted'), 'success');
+        setDeletingRecord(null);
+        if (records.length === 1 && page > 1) {
+          const fallbackPage = page - 1;
+          setPage(fallbackPage);
+          loadRecords(fallbackPage);
+        } else {
+          loadRecords(page);
+        }
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || t('toasts.errorOccurred');
+      showToast(msg, 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -162,8 +165,6 @@ export const UpdateEntry = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto py-4 sm:py-6">
-      
-      {/* Container Card */}
       <div className="bg-[#161816]/90 backdrop-blur-2xl border border-tertiary/40 rounded-3xl p-4 sm:p-8 shadow-2xl relative overflow-hidden">
         
         {/* Top Header */}
@@ -183,7 +184,7 @@ export const UpdateEntry = () => {
           </div>
 
           <button
-            onClick={loadAllRecords}
+            onClick={() => loadRecords(page)}
             className="self-end sm:self-auto px-3.5 py-2 rounded-xl bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-tertiary transition-all text-xs font-bold flex items-center gap-1.5"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -194,10 +195,7 @@ export const UpdateEntry = () => {
         {/* Search Tab Switcher */}
         <div className="grid grid-cols-3 bg-surface-container-high p-1 sm:p-1.5 rounded-2xl border border-outline-variant/40 mb-5 sm:mb-6 gap-1">
           <button
-            onClick={() => {
-              setActiveTab('name');
-              setError('');
-            }}
+            onClick={() => handleTabChange('name')}
             className={`py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 ${
               activeTab === 'name'
                 ? 'bg-primary-container text-on-primary-container shadow border border-primary/40'
@@ -209,10 +207,7 @@ export const UpdateEntry = () => {
           </button>
 
           <button
-            onClick={() => {
-              setActiveTab('date');
-              setError('');
-            }}
+            onClick={() => handleTabChange('date')}
             className={`py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 ${
               activeTab === 'date'
                 ? 'bg-primary-container text-on-primary-container shadow border border-primary/40'
@@ -224,10 +219,7 @@ export const UpdateEntry = () => {
           </button>
 
           <button
-            onClick={() => {
-              setActiveTab('collector');
-              setError('');
-            }}
+            onClick={() => handleTabChange('collector')}
             className={`py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 ${
               activeTab === 'collector'
                 ? 'bg-primary-container text-on-primary-container shadow border border-primary/40'
@@ -239,13 +231,13 @@ export const UpdateEntry = () => {
           </button>
         </div>
 
-        {/* Tab 1: Search by Name */}
+        {/* Search Inputs */}
         {activeTab === 'name' && (
           <div className="mb-5 sm:mb-6 relative">
             <input
               type="text"
               value={searchName}
-              onChange={handleNameInputChange}
+              onChange={(e) => setSearchName(e.target.value)}
               placeholder={t('updateEntry.searchPlaceholders.name')}
               className="w-full pl-10 pr-4 py-3 rounded-2xl bg-surface-container-high border border-outline-variant/40 text-on-surface placeholder:text-on-surface-variant/50 focus:border-tertiary focus:outline-none text-xs sm:text-sm font-medium transition-all shadow-inner"
             />
@@ -253,36 +245,24 @@ export const UpdateEntry = () => {
           </div>
         )}
 
-        {/* Tab 2: Search by Date (Restricted to current year) */}
         {activeTab === 'date' && (
-          <form onSubmit={handleDateSearch} className="mb-5 sm:mb-6 flex flex-col sm:flex-row gap-2.5">
-            <div className="flex-1 relative">
-              <input
-                type="date"
-                value={selectedDate}
-                min={minDate}
-                max={maxDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full px-3.5 py-3 rounded-xl bg-surface-container-high border border-outline-variant/40 text-on-surface focus:border-tertiary focus:outline-none text-xs sm:text-sm font-medium transition-all"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={!selectedDate || loading}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-primary-container text-on-primary-container border border-primary/40 hover:bg-primary hover:text-on-primary transition-all text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
-            >
-              <Search className="w-4 h-4" />
-              <span>Search</span>
-            </button>
-          </form>
+          <div className="mb-5 sm:mb-6 max-w-sm">
+            <input
+              type="date"
+              value={selectedDate}
+              min={minDate}
+              max={maxDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full px-3.5 py-3 rounded-2xl bg-surface-container-high border border-outline-variant/40 text-on-surface focus:border-tertiary focus:outline-none text-xs sm:text-sm font-medium transition-all"
+            />
+          </div>
         )}
 
-        {/* Tab 3: Search by Collector */}
         {activeTab === 'collector' && (
-          <div className="mb-5 sm:mb-6">
+          <div className="mb-5 sm:mb-6 max-w-md">
             <select
               value={selectedCollector}
-              onChange={(e) => handleCollectorSearch(e.target.value)}
+              onChange={(e) => setSelectedCollector(e.target.value)}
               className="w-full px-3.5 py-3 rounded-2xl bg-surface-container-high border border-outline-variant/40 text-on-surface focus:border-tertiary focus:outline-none text-xs sm:text-sm font-medium transition-all"
             >
               <option value="">{t('updateEntry.searchPlaceholders.collector')} (All)</option>
@@ -351,12 +331,10 @@ export const UpdateEntry = () => {
                       </td>
                       <td className="p-4">
                         <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-surface-container-high text-on-surface border border-outline-variant/30">
-                          {item.paymentVia === 'UPI' ? t('options.upi') : t('options.cash')}
+                          {item.status === 'Pending' ? '-' : item.paymentVia || '-'}
                         </span>
                       </td>
-                      <td className="p-4">
-                        {getStatusBadge(item.status)}
-                      </td>
+                      <td className="p-4">{getStatusBadge(item.status)}</td>
                       <td className="p-4 font-medium text-on-surface-variant">
                         {item.paidTo?.name || '-'}
                       </td>
@@ -368,13 +346,24 @@ export const UpdateEntry = () => {
                         })}
                       </td>
                       <td className="p-4 text-center">
-                        <button
-                          onClick={() => openEditModal(item)}
-                          className="p-2 rounded-xl bg-primary-container/40 border border-primary/30 text-primary hover:bg-primary hover:text-on-primary transition-all shadow-sm"
-                          title={t('updateEntry.table.edit')}
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => openEditModal(item)}
+                            className="p-2 rounded-xl bg-primary-container/40 border border-primary/30 text-primary hover:bg-primary hover:text-on-primary transition-all shadow-sm"
+                            title={t('updateEntry.table.edit')}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => setDeletingRecord(item)}
+                              className="p-2 rounded-xl bg-error-container/60 border border-error/40 text-error hover:bg-error hover:text-on-error transition-all shadow-sm"
+                              title={t('updateEntry.table.delete')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -403,13 +392,22 @@ export const UpdateEntry = () => {
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => openEditModal(item)}
-                      className="px-3 py-1.5 rounded-xl bg-primary-container text-on-primary-container border border-primary/40 hover:bg-primary hover:text-on-primary transition-all flex items-center gap-1 text-xs font-bold shadow-sm flex-shrink-0"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>{t('updateEntry.table.edit')}</span>
-                    </button>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className="p-2 rounded-xl bg-primary-container text-on-primary-container border border-primary/40 hover:bg-primary hover:text-on-primary transition-all text-xs font-bold shadow-sm"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setDeletingRecord(item)}
+                          className="p-2 rounded-xl bg-error-container/60 text-error border border-error/40 hover:bg-error transition-all text-xs font-bold shadow-sm"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-1.5 py-2.5 border-y border-outline-variant/20 text-center bg-surface-container-lowest/50 rounded-xl px-2">
@@ -444,7 +442,7 @@ export const UpdateEntry = () => {
                   <div className="flex items-center justify-between text-xs pt-0.5">
                     <div className="flex items-center gap-1.5">
                       <span className="px-2 py-0.5 rounded-md bg-surface-container text-on-surface border border-outline-variant/30 text-[11px] font-semibold">
-                        {item.paymentVia === 'UPI' ? t('options.upi') : t('options.cash')}
+                        {item.status === 'Pending' ? '-' : item.paymentVia || '-'}
                       </span>
                       {getStatusBadge(item.status)}
                     </div>
@@ -456,6 +454,12 @@ export const UpdateEntry = () => {
                 </div>
               ))}
             </div>
+
+            {/* Pagination Component */}
+            <Pagination
+              pagination={pagination}
+              onPageChange={handlePageChange}
+            />
           </div>
         )}
       </div>
@@ -465,6 +469,15 @@ export const UpdateEntry = () => {
         record={selectedRecord}
         onClose={() => setIsEditOpen(false)}
         onSuccess={handleEditSuccess}
+      />
+
+      <DeleteConfirmModal
+        isOpen={!!deletingRecord}
+        title={t('deleteModal.confirmTitle')}
+        message={t('deleteModal.confirmCollection')}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => setDeletingRecord(null)}
+        loading={deleteLoading}
       />
     </div>
   );

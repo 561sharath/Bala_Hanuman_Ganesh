@@ -5,7 +5,12 @@
     "menu": {
       "createEntry": "Create Entry",
       "updateEntry": "Update Entry",
-      "downloadSheet": "Download Sheet"
+      "trackCollection": "Track Collection",
+      "trackSpendings": "Track Spendings",
+      "updateSpendings": "Update Spendings",
+      "downloadSheet": "Download Sheet",
+      "adminLogin": "Admin Login",
+      "logout": "Logout"
     },
     "language": {
       "en": "English",
@@ -24,6 +29,21 @@
         "title": "Update Entry",
         "desc": "Search, filter, and modify existing collection records by date, donor name, or collector.",
         "action": "Search & Edit"
+      },
+      "trackCollection": {
+        "title": "Track Collection",
+        "desc": "View and track all Vinayaka Chanda collections by name, date, or collector.",
+        "action": "Track Collections"
+      },
+      "trackSpendings": {
+        "title": "Track Spendings",
+        "desc": "Record new Samithi spending expenses with item name, amount, date, and spender.",
+        "action": "Record Spending"
+      },
+      "updateSpendings": {
+        "title": "Update Spendings",
+        "desc": "Search, edit, or remove recorded Samithi spending expenses.",
+        "action": "Manage Spendings"
       },
       "download": {
         "title": "Download Sheet",
@@ -83,10 +103,56 @@
       "paidTo": "Paid To",
       "date": "Date",
       "action": "Action",
-      "edit": "Edit"
+      "edit": "Edit",
+      "delete": "Delete"
     },
     "emptyState": "No collection records found.",
     "currentYearNotice": "Date picker allows dates from current year only."
+  },
+  "trackCollection": {
+    "title": "Track Collections",
+    "subtitle": "View and filter all collection records across Samithi ledgers"
+  },
+  "trackSpendings": {
+    "title": "Track Spendings",
+    "subtitle": "Record new Samithi spending details",
+    "fields": {
+      "itemName": "Item Name",
+      "itemNamePlaceholder": "Enter item name...",
+      "amountSpent": "Amount Spent (₹)",
+      "amountSpentPlaceholder": "Enter amount spent (0 - 100,000)",
+      "date": "Date",
+      "spentBy": "Spent By",
+      "spentByPlaceholder": "Enter name of person who spent..."
+    },
+    "buttons": {
+      "save": "Save Spending",
+      "saving": "Saving Spending..."
+    }
+  },
+  "updateSpendings": {
+    "title": "Update Spendings",
+    "subtitle": "Search and update Samithi spending records",
+    "tabs": {
+      "name": "Search by Item Name",
+      "date": "Search by Date",
+      "spentBy": "Search by Spent By"
+    },
+    "searchPlaceholders": {
+      "name": "Search by item name...",
+      "date": "Select Date",
+      "spentBy": "Search by spent by..."
+    },
+    "table": {
+      "itemName": "Item Name",
+      "amountSpent": "Amount Spent",
+      "date": "Date",
+      "spentBy": "Spent By",
+      "action": "Action",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "emptyState": "No spending records found."
   },
   "downloadSheet": {
     "title": "Download Collection Sheet",
@@ -100,6 +166,36 @@
     ],
     "button": "Download Excel Sheet",
     "downloading": "Generating & Downloading..."
+  },
+  "adminLogin": {
+    "title": "Admin Login",
+    "subtitle": "Enter your admin credentials to unlock management features",
+    "username": "Username",
+    "usernamePlaceholder": "Enter username...",
+    "password": "Password",
+    "passwordPlaceholder": "Enter password...",
+    "login": "Login",
+    "loggingIn": "Logging in...",
+    "cancel": "Cancel",
+    "invalidCredentials": "Invalid username or password",
+    "accessDenied": "Access denied. Admin privileges required."
+  },
+  "deleteModal": {
+    "confirmTitle": "Confirm Deletion",
+    "confirmCollection": "Are you sure you want to delete this collection record?",
+    "confirmSpending": "Are you sure you want to delete this spending record?",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "cancel": "Cancel"
+  },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "showing": "Showing",
+    "to": "to",
+    "of": "of",
+    "records": "records",
+    "page": "Page"
   },
   "modals": {
     "addCollector": {
@@ -115,6 +211,12 @@
       "save": "Save Changes",
       "saving": "Saving Changes...",
       "cancel": "Cancel"
+    },
+    "editSpending": {
+      "title": "Edit Spending Record",
+      "save": "Save Changes",
+      "saving": "Saving Changes...",
+      "cancel": "Cancel"
     }
   },
   "options": {
@@ -127,9 +229,15 @@
   "toasts": {
     "recordSaved": "Record saved successfully",
     "recordUpdated": "Record updated successfully",
+    "recordDeleted": "Collection record deleted successfully",
+    "spendingSaved": "Spending record saved successfully",
+    "spendingUpdated": "Spending record updated successfully",
+    "spendingDeleted": "Spending record deleted successfully",
     "collectorAdded": "Collector added successfully",
     "excelDownloaded": "Excel sheet downloaded successfully",
-    "errorOccurred": "An error occurred. Please try again."
+    "errorOccurred": "An error occurred. Please try again.",
+    "loginSuccess": "Admin login successful",
+    "logoutSuccess": "Logged out successfully"
   },
   "validation": {
     "nameRequired": "Name is required",
@@ -137,11 +245,16 @@
     "amountRequired": "Amount is required and must be between ₹0 and ₹100,000",
     "amountPaidRequired": "Amount Paid is required and must be between ₹0 and ₹100,000",
     "amountPaidMax": "Amount Paid cannot be greater than Total Amount",
-    "paymentViaRequired": "Payment Via is required",
+    "paymentViaRequired": "Payment Via is required for Paid/Balance status",
     "statusRequired": "Status is required",
     "paidToRequired": "Paid To collector is required",
     "collectorNameRequired": "Collector name is required",
     "collectorExists": "Collector name already exists",
-    "invalidYearDate": "Selected date must be in the current year"
+    "invalidYearDate": "Selected date must be in the current year",
+    "itemNameRequired": "Item name is required",
+    "itemNameMax": "Item name cannot exceed 100 characters",
+    "amountSpentRequired": "Amount spent is required and must be between ₹0 and ₹100,000",
+    "spentByRequired": "Spent by is required",
+    "spentByMax": "Spent by cannot exceed 70 characters"
   }
 }

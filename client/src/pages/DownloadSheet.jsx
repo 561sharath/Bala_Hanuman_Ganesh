@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Download, FileSpreadsheet, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
-import { fetchCollections } from '../services/api';
+import { fetchExportCollections } from '../services/api';
 import { exportCollectionsToExcel } from '../utils/excelExporter';
 
 export const DownloadSheet = () => {
@@ -16,8 +16,8 @@ export const DownloadSheet = () => {
     setError('');
 
     try {
-      // Fetch all collections sorted by amountPaid descending
-      const res = await fetchCollections('amountPaid', 'desc');
+      // Fetch full collection dataset sorted by amountPaid descending
+      const res = await fetchExportCollections();
 
       if (!res.success || !res.data || res.data.length === 0) {
         setError(t('updateEntry.emptyState'));
@@ -40,13 +40,13 @@ export const DownloadSheet = () => {
     <div className="w-full max-w-3xl mx-auto py-8">
       
       {/* Container Card */}
-      <div className="bg-surface-container/70 backdrop-blur-2xl border border-tertiary/30 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-center flex flex-col items-center">
+      <div className="bg-[#161816]/90 backdrop-blur-2xl border border-tertiary/30 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-center flex flex-col items-center">
         
         {/* Decorative Top Ambient Light */}
         <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-32 bg-gradient-to-b from-tertiary/20 via-primary/10 to-transparent blur-2xl pointer-events-none" />
 
         {/* Icon Emblem */}
-        <div className="w-20 h-20 rounded-3xl bg-tertiary-container/30 border border-tertiary/40 flex items-center justify-center text-tertiary mb-6 shadow-xl relative z-10">
+        <div className="w-20 h-20 rounded-3xl bg-tertiary/20 border border-tertiary/40 flex items-center justify-center text-tertiary mb-6 shadow-xl relative z-10">
           <FileSpreadsheet className="w-10 h-10" />
         </div>
 
@@ -60,7 +60,7 @@ export const DownloadSheet = () => {
         </p>
 
         {/* Specs Box */}
-        <div className="w-full bg-surface-container-high/60 backdrop-blur-xl border border-outline-variant/30 rounded-2xl p-6 text-left mb-8 relative z-10 shadow-inner">
+        <div className="w-full bg-[#212421] backdrop-blur-xl border border-outline-variant/30 rounded-2xl p-6 text-left mb-8 relative z-10 shadow-inner">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-4 flex items-center gap-2">
             <CheckCircle className="w-4 h-4" />
             <span>{t('downloadSheet.infoTitle')}</span>
@@ -88,7 +88,7 @@ export const DownloadSheet = () => {
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-primary-container text-on-primary-container border border-primary/40 hover:bg-primary hover:text-on-primary transition-all duration-300 font-headline font-bold text-lg flex items-center justify-center gap-3 shadow-2xl relative z-10 disabled:opacity-50"
+          className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-primary-container text-on-primary-container border border-primary/40 hover:bg-primary hover:text-on-primary transition-all duration-300 font-headline font-bold text-lg flex items-center justify-center gap-3 shadow-2xl relative z-10 disabled:opacity-50 active:scale-95"
         >
           {downloading ? (
             <>

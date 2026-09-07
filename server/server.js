@@ -10,16 +10,23 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const app = express();
 
 // Middleware
-const allowedOrigin = process.env.CLIENT_URL || '*';
+const allowedOrigin = process.env.CLIENT_URL;
 app.use(cors({
-  origin: allowedOrigin === '*' ? '*' : [allowedOrigin, 'http://localhost:5173'],
+  origin: (origin, callback) => {
+    if (!origin || !allowedOrigin || allowedOrigin === '*' || origin === allowedOrigin || origin.endsWith('.vercel.app') || origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
   credentials: true,
 }));
 app.use(express.json());
 
 // API Routes
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/collectors', require('./routes/collectorRoutes'));
 app.use('/api/collections', require('./routes/collectionRoutes'));
+app.use('/api/spendings', require('./routes/spendingRoutes'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

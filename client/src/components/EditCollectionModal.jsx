@@ -43,10 +43,11 @@ export const EditCollectionModal = ({ isOpen, record, onClose, onSuccess }) => {
         amount: record.amount ?? '',
         amountPaid: record.amountPaid ?? '',
         pendingAmount: record.pendingAmount ?? 0,
-        paymentVia: record.paymentVia || 'UPI',
+        paymentVia: record.status === 'Pending' ? null : (record.paymentVia || 'UPI'),
         status: record.status || 'Paid',
         paidTo: record.paidTo?._id || record.paidTo || '',
       });
+      setError('');
       loadCollectors();
     }
   }, [isOpen, record]);
@@ -86,15 +87,26 @@ export const EditCollectionModal = ({ isOpen, record, onClose, onSuccess }) => {
           updated.status = 'Balance';
         } else if (numPd >= numAmt && numAmt > 0) {
           updated.status = 'Paid';
+          if (!updated.paymentVia) updated.paymentVia = 'UPI';
+        } else if (value === '' || numPd === 0) {
+          updated.status = 'Pending';
+          updated.paymentVia = null;
         }
       } else if (field === 'status') {
         if (value === 'Paid') {
           updated.amountPaid = prev.amount;
           updated.pendingAmount = 0;
+          if (!updated.paymentVia) updated.paymentVia = 'UPI';
+        } else if (value === 'Pending') {
+          updated.amountPaid = 0;
+          const numAmt = prev.amount === '' ? 0 : Number(prev.amount);
+          updated.pendingAmount = numAmt;
+          updated.paymentVia = null;
         } else {
           const numAmt = prev.amount === '' ? 0 : Number(prev.amount);
           const numPd = prev.amountPaid === '' ? 0 : Number(prev.amountPaid);
           updated.pendingAmount = Math.max(0, numAmt - numPd);
+          if (!updated.paymentVia) updated.paymentVia = 'UPI';
         }
       }
 
@@ -137,14 +149,19 @@ export const EditCollectionModal = ({ isOpen, record, onClose, onSuccess }) => {
       return;
     }
 
-    const numPaid = Number(amountPaid);
-    if (amountPaid === '' || isNaN(numPaid) || numPaid < 0 || numPaid > 100000) {
+    const numPaid = status === 'Pending' ? 0 : Number(amountPaid);
+    if ((amountPaid === '' && status !== 'Pending') || isNaN(numPaid) || numPaid < 0 || numPaid > 100000) {
       setError(t('validation.amountPaidRequired'));
       return;
     }
 
     if (numPaid > numAmount) {
       setError(t('validation.amountPaidMax'));
+      return;
+    }
+
+    if (status !== 'Pending' && !paymentVia) {
+      setError(t('validation.paymentViaRequired'));
       return;
     }
 
@@ -160,6 +177,7 @@ export const EditCollectionModal = ({ isOpen, record, onClose, onSuccess }) => {
         amount: numAmount,
         amountPaid: numPaid,
         pendingAmount: Math.max(0, numAmount - numPaid),
+        paymentVia: status === 'Pending' ? null : paymentVia,
       };
 
       const res = await updateCollectionRecord(record._id, payload);
@@ -186,8 +204,8 @@ export const EditCollectionModal = ({ isOpen, record, onClose, onSuccess }) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-md overflow-y-auto">
-        <div className="w-full max-w-lg bg-[#161816] border border-tertiary/40 rounded-2xl p-6 shadow-2xl relative my-8">
+      <div className="fixed inset-0 z-[150] flex items-start justify-center p-4 pt-24 pb-12 bg-black/85 backdrop-blur-md overflow-y-auto">
+        <div className="w-full max-w-lg bg-[#161816] border border-tertiary/40 rounded-2xl p-6 shadow-2xl relative my-0 animate-in fade-in zoom-in-95 duration-200">
           
           {/* Header */}
           <div className="flex items-center justify-between pb-4 border-b border-outline-variant/30">
@@ -224,102 +242,144 @@ export const EditCollectionModal = ({ isOpen, record, onClose, onSuccess }) => {
                 type="text"
                 value={formattedDate}
                 disabled
-                className="w-full px-4 py-2.5 rounded-xl bg-surface-container-lowest/80 border border-outline-variant/20 text-on-surface-variant cursor-not-allowed text-sm"
+                className="w-full px-3.5 py-2 bg-[#212421] border border-outline-variant/30 rounded-xl text-sm text-on-surface-variant cursor-not-allowed opacity-75"
               />
             </div>
 
-            {/* Donor Name */}
+            {/* Donor Name & Language */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                {t('createEntry.fields.name')} <span className="text-error">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                  {t('createEntry.fields.name')} <span className="text-error">*</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-on-surface-variant">
+                    {t('createEntry.fields.nameLang')}:
+                  </span>
+                  <div className="flex bg-[#212421] rounded-lg p-0.5 border border-outline-variant/40">
+                    <button
+                      type="button"
+                      onClick={() => handleChange('nameLanguage', 'EN')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        formData.nameLanguage === 'EN'
+                          ? 'bg-primary-container text-on-primary-container'
+                          : 'text-on-surface-variant'
+                      }`}
+                    >
+                      EN
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleChange('nameLanguage', 'TE')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        formData.nameLanguage === 'TE'
+                          ? 'bg-primary-container text-on-primary-container'
+                          : 'text-on-surface-variant'
+                      }`}
+                    >
+                      తెలుగు
+                    </button>
+                  </div>
+                </div>
+              </div>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 maxLength={70}
-                className="w-full px-4 py-2.5 rounded-xl bg-[#1f221f] border border-tertiary/30 text-on-surface focus:border-tertiary focus:outline-none focus:ring-1 focus:ring-tertiary text-sm"
+                className="w-full px-3.5 py-2.5 bg-[#212421] border border-outline-variant/40 rounded-xl text-sm text-on-surface focus:outline-none focus:border-tertiary font-bold"
+                required
               />
             </div>
 
-            {/* Amount & Amount Paid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Amounts Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Total Amount */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
                   {t('createEntry.fields.amount')} <span className="text-error">*</span>
                 </label>
                 <input
                   type="number"
+                  min="0"
+                  max="100000"
                   value={formData.amount}
                   onChange={(e) => handleChange('amount', e.target.value)}
-                  onWheel={(e) => e.target.blur()}
-                  min={0}
-                  max={100000}
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#1f221f] border border-tertiary/30 text-on-surface focus:border-tertiary focus:outline-none focus:ring-1 focus:ring-tertiary text-sm"
+                  className="w-full px-3 py-2 bg-[#212421] border border-outline-variant/40 rounded-xl text-sm text-on-surface focus:outline-none focus:border-tertiary font-bold"
+                  required
                 />
               </div>
 
+              {/* Amount Paid */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
                   {t('createEntry.fields.amountPaid')} <span className="text-error">*</span>
                 </label>
                 <input
                   type="number"
+                  min="0"
+                  max="100000"
                   value={formData.amountPaid}
+                  disabled={formData.status === 'Pending'}
                   onChange={(e) => handleChange('amountPaid', e.target.value)}
-                  onWheel={(e) => e.target.blur()}
-                  min={0}
-                  max={100000}
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#1f221f] border border-tertiary/30 text-on-surface focus:border-tertiary focus:outline-none focus:ring-1 focus:ring-tertiary text-sm"
+                  className="w-full px-3 py-2 bg-[#212421] border border-outline-variant/40 rounded-xl text-sm text-on-surface focus:outline-none focus:border-tertiary font-bold disabled:opacity-50"
+                  required
                 />
               </div>
-            </div>
 
-            {/* Pending Amount (Calculated Read-only) */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                {t('createEntry.fields.pendingAmount')}
-              </label>
-              <input
-                type="number"
-                value={formData.pendingAmount}
-                readOnly
-                className="w-full px-4 py-2.5 rounded-xl bg-surface-container-lowest/80 border border-outline-variant/20 text-tertiary font-semibold text-sm cursor-not-allowed"
-              />
+              {/* Pending Amount */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                  {t('createEntry.fields.pendingAmount')}
+                </label>
+                <input
+                  type="number"
+                  value={formData.pendingAmount}
+                  disabled
+                  className="w-full px-3 py-2 bg-[#212421] border border-outline-variant/30 rounded-xl text-sm text-tertiary font-bold opacity-80 cursor-not-allowed"
+                />
+              </div>
             </div>
 
             {/* Payment Via Pill Selector */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                {t('createEntry.fields.paymentVia')} <span className="text-error">*</span>
+                {t('createEntry.fields.paymentVia')}{' '}
+                {formData.status !== 'Pending' && <span className="text-error">*</span>}
               </label>
-              <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-[#1f221f] border border-tertiary/30 shadow-inner">
-                <button
-                  type="button"
-                  onClick={() => handleChange('paymentVia', 'UPI')}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all border ${
-                    formData.paymentVia === 'UPI'
-                      ? 'bg-gradient-to-r from-tertiary/30 to-primary-container text-tertiary border-tertiary shadow-md'
-                      : 'text-on-surface-variant border-transparent hover:text-on-surface hover:bg-surface-bright/40'
-                  }`}
-                >
-                  <Smartphone className="w-4 h-4 text-tertiary" />
-                  <span>{t('options.upi')}</span>
-                </button>
+              {formData.status === 'Pending' ? (
+                <div className="p-2.5 rounded-2xl bg-[#1f221f] border border-outline-variant/20 text-xs text-on-surface-variant/70 italic text-center">
+                  Payment Via is disabled for Pending status
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-[#1f221f] border border-tertiary/30 shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => handleChange('paymentVia', 'UPI')}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all border ${
+                      formData.paymentVia === 'UPI'
+                        ? 'bg-gradient-to-r from-tertiary/30 to-primary-container text-tertiary border-tertiary shadow-md'
+                        : 'text-on-surface-variant border-transparent hover:text-on-surface hover:bg-surface-bright/40'
+                    }`}
+                  >
+                    <Smartphone className="w-4 h-4 text-tertiary" />
+                    <span>{t('options.upi')}</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleChange('paymentVia', 'Cash')}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all border ${
-                    formData.paymentVia === 'Cash'
-                      ? 'bg-gradient-to-r from-secondary/30 to-secondary-container text-secondary border-secondary shadow-md'
-                      : 'text-on-surface-variant border-transparent hover:text-on-surface hover:bg-surface-bright/40'
-                  }`}
-                >
-                  <Banknote className="w-4 h-4 text-secondary" />
-                  <span>{t('options.cash')}</span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => handleChange('paymentVia', 'Cash')}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all border ${
+                      formData.paymentVia === 'Cash'
+                        ? 'bg-gradient-to-r from-secondary/30 to-secondary-container text-secondary border-secondary shadow-md'
+                        : 'text-on-surface-variant border-transparent hover:text-on-surface hover:bg-surface-bright/40'
+                    }`}
+                  >
+                    <Banknote className="w-4 h-4 text-secondary" />
+                    <span>{t('options.cash')}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Status 3-Way Selector Pills */}
@@ -390,24 +450,23 @@ export const EditCollectionModal = ({ isOpen, record, onClose, onSuccess }) => {
                     + {t('createEntry.buttons.addCollector')}
                   </option>
                 </select>
-                <ChevronDown className="w-4 h-4 text-tertiary absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-tertiary pointer-events-none" />
               </div>
             </div>
 
-            {/* Buttons */}
-            <div className="flex items-center justify-end gap-3 mt-4">
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-outline-variant/30">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/40 transition-all text-sm font-medium"
+                className="px-4 py-2.5 rounded-xl border border-outline-variant/40 text-on-surface-variant font-bold text-sm hover:bg-surface-bright/50 transition-colors"
               >
                 {t('modals.editRecord.cancel')}
               </button>
-
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2.5 rounded-xl bg-primary-container text-on-primary-container border border-primary/50 hover:bg-primary/90 hover:text-on-primary transition-all text-sm font-semibold flex items-center gap-2 shadow-lg disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-primary-container text-on-primary-container font-bold text-sm hover:bg-primary-container/90 transition-all border border-primary/50 shadow-md flex items-center gap-2 active:scale-95 disabled:opacity-50"
               >
                 {loading ? (
                   <>

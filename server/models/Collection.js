@@ -32,8 +32,8 @@ const collectionSchema = new mongoose.Schema(
     },
     paymentVia: {
       type: String,
-      required: [true, 'Payment Via is required'],
-      enum: ['UPI', 'Cash'],
+      enum: ['UPI', 'Cash', null],
+      default: null,
     },
     status: {
       type: String,
@@ -55,5 +55,34 @@ const collectionSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Pre-save middleware to enforce Pending status rule
+collectionSchema.pre('save', function (next) {
+  if (this.status === 'Pending') {
+    this.paymentVia = null;
+  }
+  next();
+});
+
+// Pre-update middleware to enforce Pending status rule
+collectionSchema.pre('findOneAndUpdate', function (next) {
+  const update = this.getUpdate();
+  if (update) {
+    if (update.status === 'Pending' || update.$set?.status === 'Pending') {
+      if (update.$set) {
+        update.$set.paymentVia = null;
+      } else {
+        update.paymentVia = null;
+      }
+    }
+  }
+  next();
+});
+
+// MongoDB performance indexes
+collectionSchema.index({ name: 1 });
+collectionSchema.index({ date: -1 });
+collectionSchema.index({ paidTo: 1 });
+collectionSchema.index({ amountPaid: -1 });
 
 module.exports = mongoose.model('Collection', collectionSchema);

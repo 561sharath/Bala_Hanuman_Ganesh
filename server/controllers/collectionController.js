@@ -7,10 +7,32 @@ function escapeRegex(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
+// Utility helper for pagination building
+const getPaginationData = async (model, queryFilter, pageQuery, limitQuery) => {
+  const page = Math.max(1, parseInt(pageQuery, 10) || 1);
+  const limit = Math.max(1, parseInt(limitQuery, 10) || 20);
+  const skip = (page - 1) * limit;
+
+  const totalRecords = await model.countDocuments(queryFilter);
+  const totalPages = Math.ceil(totalRecords / limit) || 1;
+
+  return {
+    page,
+    limit,
+    skip,
+    totalRecords,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  };
+};
+
 // POST /api/collections
 const createCollection = async (req, res) => {
   try {
     const { name, nameLanguage, amount, amountPaid, pendingAmount, paymentVia, status, paidTo } = req.body;
+
+    const finalPaymentVia = status === 'Pending' ? null : paymentVia;
 
     const newRecord = await Collection.create({
       name,
@@ -18,7 +40,7 @@ const createCollection = async (req, res) => {
       amount,
       amountPaid,
       pendingAmount,
-      paymentVia,
+      paymentVia: finalPaymentVia,
       status,
       paidTo,
       date: new Date(),
@@ -43,21 +65,33 @@ const createCollection = async (req, res) => {
 // GET /api/collections
 const getCollections = async (req, res) => {
   try {
-    const { sortBy, order } = req.query;
+    const { sortBy, order, page, limit } = req.query;
     let sortOptions = { createdAt: -1 };
 
     if (sortBy === 'amountPaid') {
       sortOptions = { amountPaid: order === 'asc' ? 1 : -1 };
     }
 
-    const records = await Collection.find({})
+    const filter = {};
+    const pagination = await getPaginationData(Collection, filter, page, limit);
+
+    const records = await Collection.find(filter)
       .populate('paidTo', 'name')
-      .sort(sortOptions);
+      .sort(sortOptions)
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     return res.status(200).json({
       success: true,
-      count: records.length,
       data: records,
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        totalRecords: pagination.totalRecords,
+        totalPages: pagination.totalPages,
+        hasNextPage: pagination.hasNextPage,
+        hasPreviousPage: pagination.hasPreviousPage,
+      },
     });
   } catch (error) {
     console.error('Error fetching collections:', error);
@@ -71,25 +105,33 @@ const getCollections = async (req, res) => {
 // GET /api/collections/search?q=...
 const searchCollections = async (req, res) => {
   try {
-    const { q } = req.query;
-    if (!q || q.trim() === '') {
-      const allRecords = await Collection.find({}).populate('paidTo', 'name').sort({ createdAt: -1 });
-      return res.status(200).json({
-        success: true,
-        count: allRecords.length,
-        data: allRecords,
-      });
+    const { q, page, limit } = req.query;
+    let filter = {};
+
+    if (q && q.trim() !== '') {
+      const searchRegex = new RegExp(escapeRegex(q.trim()), 'i');
+      filter = { name: searchRegex };
     }
 
-    const searchRegex = new RegExp(escapeRegex(q.trim()), 'i');
-    const records = await Collection.find({ name: searchRegex })
+    const pagination = await getPaginationData(Collection, filter, page, limit);
+
+    const records = await Collection.find(filter)
       .populate('paidTo', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     return res.status(200).json({
       success: true,
-      count: records.length,
       data: records,
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        totalRecords: pagination.totalRecords,
+        totalPages: pagination.totalPages,
+        hasNextPage: pagination.hasNextPage,
+        hasPreviousPage: pagination.hasPreviousPage,
+      },
     });
   } catch (error) {
     console.error('Error searching collections:', error);
@@ -104,6 +146,7 @@ const searchCollections = async (req, res) => {
 const getCollectionsByDate = async (req, res) => {
   try {
     const { date } = req.params;
+    const { page, limit } = req.query;
     const targetDate = new Date(date);
 
     if (isNaN(targetDate.getTime())) {
@@ -129,16 +172,26 @@ const getCollectionsByDate = async (req, res) => {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const records = await Collection.find({
-      date: { $gte: startOfDay, $lte: endOfDay },
-    })
+    const filter = { date: { $gte: startOfDay, $lte: endOfDay } };
+    const pagination = await getPaginationData(Collection, filter, page, limit);
+
+    const records = await Collection.find(filter)
       .populate('paidTo', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     return res.status(200).json({
       success: true,
-      count: records.length,
       data: records,
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        totalRecords: pagination.totalRecords,
+        totalPages: pagination.totalPages,
+        hasNextPage: pagination.hasNextPage,
+        hasPreviousPage: pagination.hasPreviousPage,
+      },
     });
   } catch (error) {
     console.error('Error fetching collections by date:', error);
@@ -153,6 +206,7 @@ const getCollectionsByDate = async (req, res) => {
 const getCollectionsByCollector = async (req, res) => {
   try {
     const { collectorId } = req.params;
+    const { page, limit } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(collectorId)) {
       return res.status(400).json({
@@ -161,9 +215,42 @@ const getCollectionsByCollector = async (req, res) => {
       });
     }
 
-    const records = await Collection.find({ paidTo: collectorId })
+    const filter = { paidTo: collectorId };
+    const pagination = await getPaginationData(Collection, filter, page, limit);
+
+    const records = await Collection.find(filter)
       .populate('paidTo', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(pagination.skip)
+      .limit(pagination.limit);
+
+    return res.status(200).json({
+      success: true,
+      data: records,
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        totalRecords: pagination.totalRecords,
+        totalPages: pagination.totalPages,
+        hasNextPage: pagination.hasNextPage,
+        hasPreviousPage: pagination.hasPreviousPage,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching collections by collector:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while searching collections by collector',
+    });
+  }
+};
+
+// GET /api/collections/export (Full dataset sorted by Amount Paid descending)
+const exportCollections = async (req, res) => {
+  try {
+    const records = await Collection.find({})
+      .populate('paidTo', 'name')
+      .sort({ amountPaid: -1 });
 
     return res.status(200).json({
       success: true,
@@ -171,10 +258,10 @@ const getCollectionsByCollector = async (req, res) => {
       data: records,
     });
   } catch (error) {
-    console.error('Error fetching collections by collector:', error);
+    console.error('Error exporting collections:', error);
     return res.status(500).json({
       success: false,
-      message: 'Server error while searching collections by collector',
+      message: 'Server error while exporting collections',
     });
   }
 };
@@ -206,8 +293,8 @@ const updateCollection = async (req, res) => {
     record.amount = amount;
     record.amountPaid = amountPaid;
     record.pendingAmount = pendingAmount;
-    record.paymentVia = paymentVia;
     record.status = status;
+    record.paymentVia = status === 'Pending' ? null : paymentVia;
     record.paidTo = paidTo;
 
     await record.save();
@@ -228,11 +315,47 @@ const updateCollection = async (req, res) => {
   }
 };
 
+// DELETE /api/collections/:id
+const deleteCollection = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid collection record ID',
+      });
+    }
+
+    const deletedRecord = await Collection.findByIdAndDelete(id);
+    if (!deletedRecord) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collection record not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Collection record deleted successfully',
+      data: deletedRecord,
+    });
+  } catch (error) {
+    console.error('Error deleting collection:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while deleting collection record',
+    });
+  }
+};
+
 module.exports = {
   createCollection,
   getCollections,
   searchCollections,
   getCollectionsByDate,
   getCollectionsByCollector,
+  exportCollections,
   updateCollection,
+  deleteCollection,
 };

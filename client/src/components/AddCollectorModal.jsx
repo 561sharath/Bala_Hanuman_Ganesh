@@ -45,8 +45,8 @@ export const AddCollectorModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-md">
-      <div className="w-full max-w-md bg-surface-container/95 backdrop-blur-2xl border border-tertiary/40 rounded-2xl p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-[200] flex items-start justify-center p-4 pt-24 pb-12 bg-black/85 backdrop-blur-md overflow-y-auto">
+      <div className="w-full max-w-md bg-[#161816] border border-tertiary/40 rounded-2xl p-6 shadow-2xl relative my-0 animate-in fade-in zoom-in duration-200">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-outline-variant/30">

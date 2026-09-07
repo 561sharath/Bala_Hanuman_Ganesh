@@ -18,8 +18,10 @@ const connectDB = async () => {
     });
     console.log(`MongoDB Connected successfully to: ${mongoose.connection.host}`);
     
-    // Seed initial default collectors if database is empty
+    // Seed initial default collectors and admin users if empty
     await seedDefaultCollectors();
+    const seedAdmins = require('./seedAdmins');
+    await seedAdmins();
   } catch (error) {
     console.warn(`Failed to connect to primary MongoDB URI (${uri}). Error: ${error.message}`);
     if (!mongoMemoryServer) {
