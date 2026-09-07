@@ -6,8 +6,8 @@ import {
   Edit,
   Trash2,
   Loader2,
-  PiggyBank,
-  FileCheck2
+  FileCheck2,
+  Wallet
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +28,7 @@ export const UpdateSpendings = () => {
   const [spentByQuery, setSpentByQuery] = useState('');
 
   const [spendings, setSpendings] = useState([]);
+  const [summary, setSummary] = useState({ totalSpendings: 0 });
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -58,6 +59,9 @@ export const UpdateSpendings = () => {
         if (res.success) {
           setSpendings(res.data);
           setPagination(res.pagination);
+          if (res.summary) {
+            setSummary(res.summary);
+          }
         }
       } catch (err) {
         console.error('Error loading spendings:', err);
@@ -68,7 +72,6 @@ export const UpdateSpendings = () => {
     [activeTab, searchQuery, selectedDate, spentByQuery]
   );
 
-  // Debounced search on name and spentBy query changes
   useEffect(() => {
     const timer = setTimeout(() => {
       setPage(1);
@@ -99,8 +102,6 @@ export const UpdateSpendings = () => {
       if (res.success) {
         showToast(t('toasts.spendingDeleted'), 'success');
         setDeletingSpending(null);
-        
-        // Check if page needs fallback
         if (spendings.length === 1 && page > 1) {
           const fallbackPage = page - 1;
           setPage(fallbackPage);
@@ -119,6 +120,24 @@ export const UpdateSpendings = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto py-4 sm:py-8">
+      
+      {/* Top Total Spendings Summary Card */}
+      <div className="mb-6">
+        <div className="bg-[#181b18]/90 backdrop-blur-xl border border-tertiary/40 rounded-2xl p-5 shadow-xl flex items-center justify-between max-w-md">
+          <div>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-on-surface-variant">
+              Total Spendings Amount
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-tertiary mt-1">
+              ₹{summary.totalSpendings.toLocaleString('en-IN')}
+            </h3>
+          </div>
+          <div className="p-3 rounded-2xl bg-tertiary/20 text-tertiary border border-tertiary/40">
+            <Wallet className="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+
       {/* Outer Card */}
       <div className="bg-[#161816]/95 backdrop-blur-xl border border-tertiary/40 rounded-3xl p-4 sm:p-8 shadow-2xl relative overflow-hidden">
         

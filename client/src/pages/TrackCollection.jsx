@@ -6,7 +6,10 @@ import {
   Loader2,
   Receipt,
   Edit,
-  Trash2
+  Trash2,
+  Coins,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -33,6 +36,7 @@ export const TrackCollection = () => {
   const [selectedCollector, setSelectedCollector] = useState('');
 
   const [records, setRecords] = useState([]);
+  const [summary, setSummary] = useState({ totalAmount: 0, collectedAmount: 0, pendingAmount: 0 });
   const [collectors, setCollectors] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -76,6 +80,9 @@ export const TrackCollection = () => {
         if (res && res.success) {
           setRecords(res.data);
           setPagination(res.pagination);
+          if (res.summary) {
+            setSummary(res.summary);
+          }
         }
       } catch (err) {
         console.error('Error fetching track collections:', err);
@@ -134,6 +141,56 @@ export const TrackCollection = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto py-4 sm:py-8">
+      
+      {/* Top Summary Metrics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        
+        {/* Total Amount Card */}
+        <div className="bg-[#181b18]/90 backdrop-blur-xl border border-tertiary/40 rounded-2xl p-5 shadow-xl flex items-center justify-between">
+          <div>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-on-surface-variant">
+              Total Amount
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-on-surface mt-1">
+              ₹{summary.totalAmount.toLocaleString('en-IN')}
+            </h3>
+          </div>
+          <div className="p-3 rounded-2xl bg-tertiary/20 text-tertiary border border-tertiary/40">
+            <Coins className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Collected Amount Card (= Paid Amount) */}
+        <div className="bg-[#181b18]/90 backdrop-blur-xl border border-tertiary/40 rounded-2xl p-5 shadow-xl flex items-center justify-between">
+          <div>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-tertiary">
+              Collected Amount (Paid)
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-tertiary mt-1">
+              ₹{summary.collectedAmount.toLocaleString('en-IN')}
+            </h3>
+          </div>
+          <div className="p-3 rounded-2xl bg-tertiary/20 text-tertiary border border-tertiary/40">
+            <CheckCircle2 className="w-6 h-6 text-tertiary" />
+          </div>
+        </div>
+
+        {/* Pending Amount Card (= Pending + Balance Amount) */}
+        <div className="bg-[#181b18]/90 backdrop-blur-xl border border-secondary/40 rounded-2xl p-5 shadow-xl flex items-center justify-between">
+          <div>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-secondary">
+              Pending Amount (Pending + Balance)
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-secondary mt-1">
+              ₹{summary.pendingAmount.toLocaleString('en-IN')}
+            </h3>
+          </div>
+          <div className="p-3 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40">
+            <Clock className="w-6 h-6 text-secondary" />
+          </div>
+        </div>
+      </div>
+
       <div className="bg-[#161816]/95 backdrop-blur-xl border border-tertiary/40 rounded-3xl p-4 sm:p-8 shadow-2xl relative overflow-hidden">
         
         {/* Header Bar */}

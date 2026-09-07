@@ -7,6 +7,34 @@ function escapeRegex(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
+// Helper to aggregate collection summary totals
+const getCollectionSummary = async (queryFilter = {}) => {
+  const result = await Collection.aggregate([
+    { $match: queryFilter },
+    {
+      $group: {
+        _id: null,
+        totalAmount: { $sum: '$amount' },
+        collectedAmount: { $sum: '$amountPaid' },
+        pendingAmount: { $sum: '$pendingAmount' },
+      },
+    },
+  ]);
+
+  if (result.length > 0) {
+    return {
+      totalAmount: result[0].totalAmount || 0,
+      collectedAmount: result[0].collectedAmount || 0,
+      pendingAmount: result[0].pendingAmount || 0,
+    };
+  }
+  return {
+    totalAmount: 0,
+    collectedAmount: 0,
+    pendingAmount: 0,
+  };
+};
+
 // Utility helper for pagination building
 const getPaginationData = async (model, queryFilter, pageQuery, limitQuery) => {
   const page = Math.max(1, parseInt(pageQuery, 10) || 1);
@@ -74,6 +102,7 @@ const getCollections = async (req, res) => {
 
     const filter = {};
     const pagination = await getPaginationData(Collection, filter, page, limit);
+    const summary = await getCollectionSummary(filter);
 
     const records = await Collection.find(filter)
       .populate('paidTo', 'name')
@@ -84,6 +113,7 @@ const getCollections = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: records,
+      summary,
       pagination: {
         page: pagination.page,
         limit: pagination.limit,
@@ -114,6 +144,7 @@ const searchCollections = async (req, res) => {
     }
 
     const pagination = await getPaginationData(Collection, filter, page, limit);
+    const summary = await getCollectionSummary(filter);
 
     const records = await Collection.find(filter)
       .populate('paidTo', 'name')
@@ -124,6 +155,7 @@ const searchCollections = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: records,
+      summary,
       pagination: {
         page: pagination.page,
         limit: pagination.limit,
@@ -174,6 +206,7 @@ const getCollectionsByDate = async (req, res) => {
 
     const filter = { date: { $gte: startOfDay, $lte: endOfDay } };
     const pagination = await getPaginationData(Collection, filter, page, limit);
+    const summary = await getCollectionSummary(filter);
 
     const records = await Collection.find(filter)
       .populate('paidTo', 'name')
@@ -184,6 +217,7 @@ const getCollectionsByDate = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: records,
+      summary,
       pagination: {
         page: pagination.page,
         limit: pagination.limit,
@@ -217,6 +251,7 @@ const getCollectionsByCollector = async (req, res) => {
 
     const filter = { paidTo: collectorId };
     const pagination = await getPaginationData(Collection, filter, page, limit);
+    const summary = await getCollectionSummary(filter);
 
     const records = await Collection.find(filter)
       .populate('paidTo', 'name')
@@ -227,6 +262,7 @@ const getCollectionsByCollector = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: records,
+      summary,
       pagination: {
         page: pagination.page,
         limit: pagination.limit,

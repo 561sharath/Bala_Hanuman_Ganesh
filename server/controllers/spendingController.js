@@ -6,6 +6,28 @@ function escapeRegex(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
+// Helper to aggregate spending summary total
+const getSpendingSummary = async (queryFilter = {}) => {
+  const result = await Spending.aggregate([
+    { $match: queryFilter },
+    {
+      $group: {
+        _id: null,
+        totalSpendings: { $sum: '$amountSpent' },
+      },
+    },
+  ]);
+
+  if (result.length > 0) {
+    return {
+      totalSpendings: result[0].totalSpendings || 0,
+    };
+  }
+  return {
+    totalSpendings: 0,
+  };
+};
+
 // Utility helper for pagination building
 const getPaginationData = async (model, queryFilter, pageQuery, limitQuery) => {
   const page = Math.max(1, parseInt(pageQuery, 10) || 1);
@@ -71,7 +93,7 @@ const createSpending = async (req, res) => {
   }
 };
 
-// GET /api/spendings (Paginated & Filterable)
+// GET /api/spendings (Paginated & Filterable with Summary)
 const getSpendings = async (req, res) => {
   try {
     const { q, date, spentBy, page, limit } = req.query;
@@ -99,6 +121,7 @@ const getSpendings = async (req, res) => {
     }
 
     const pagination = await getPaginationData(Spending, filter, page, limit);
+    const summary = await getSpendingSummary(filter);
 
     const records = await Spending.find(filter)
       .sort({ createdAt: -1 })
@@ -108,6 +131,7 @@ const getSpendings = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: records,
+      summary,
       pagination: {
         page: pagination.page,
         limit: pagination.limit,

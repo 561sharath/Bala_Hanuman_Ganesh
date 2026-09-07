@@ -5,19 +5,20 @@ import { useLanguage } from '../context/LanguageContext';
 export const Pagination = ({ pagination, onPageChange }) => {
   const { t } = useLanguage();
 
-  if (!pagination || pagination.totalPages <= 1) return null;
+  if (!pagination || !pagination.totalRecords || pagination.totalRecords === 0) return null;
 
   const { page, limit, totalRecords, totalPages, hasNextPage, hasPreviousPage } = pagination;
 
-  const startRecord = (page - 1) * limit + 1;
+  const startRecord = Math.min((page - 1) * limit + 1, totalRecords);
   const endRecord = Math.min(page * limit, totalRecords);
 
   // Generate page numbers range around current page
   const getPageNumbers = () => {
     const pages = [];
     const maxVisible = 5;
+    const count = totalPages || 1;
     let start = Math.max(1, page - Math.floor(maxVisible / 2));
-    let end = Math.min(totalPages, start + maxVisible - 1);
+    let end = Math.min(count, start + maxVisible - 1);
 
     if (end - start + 1 < maxVisible) {
       start = Math.max(1, end - maxVisible + 1);
